@@ -1,0 +1,241 @@
+---
+title: "class07QD"
+format: pdf
+author: Ilyas Darif A16577084
+date: 4/23/24
+---
+
+
+
+today we will start our multi part exploration of some key machine learning methods. we  will begin with clustering - finding groupings in data and then dimensionallity reduction
+
+
+
+## Clustering
+lets start with "k-means" cluttering
+the main function in base R for the is `means()`
+
+
+```{r}
+#makeup up some data
+hist( rnorm(100000, mean=3))
+```
+
+```{r}
+tmp <- c(rnorm(30, -3), rnorm(30, +3))
+
+x <- cbind(x=tmp, y=rev(tmp))
+x
+plot(x)
+```
+
+
+now lets try out `kmeans()`
+
+```{r}
+km <- kmeans(x, centers=2)
+km
+```
+
+```{r}
+attributes(km)
+```
+
+> Q1. how many points in each cluster?
+
+
+```{r}
+km$size
+```
+
+> Q2. what commponant of your result object details cluster assignment/membership
+
+
+```{r}
+km$cluster
+```
+
+
+
+
+>Q3. what are centers/mean values of each cluster
+
+
+```{r}
+km$centers
+```
+
+
+
+> Q4. make a plot of your data showing your clustering results (groupings/clusters and cluster centers)
+
+
+```{r}
+plot(x, col=c("red", "blue"))
+```
+
+```{r}
+plot(x, col=c(1,2))
+```
+
+```{r}
+plot(x, col=km$cluster)
+
+points(km$centers, col="green", pch=15, cex=3)
+```
+
+> Q5. run `kmeans()` again and cluster in 4 groups and plot the results.
+
+
+
+```{r}
+km4 <- kmeans(x, centers = 4)
+plot(x, col=km4$cluster)
+```
+
+## hierarchial clustering
+
+this form of clustering aims to reveal the structure in your data by progessively grouping points into a ever smaller number of clusters
+
+the maion function in base R for this called `chlust()` . this function does not take our input data directly but wants a "distance matrix" that details how (dis)similar our inout points are to each other
+
+
+
+```{r}
+hc <- hclust( dist(x) )
+hc
+```
+
+
+the print out above is not useful (unlike that from kmeans) but there is a useful `plot()` method
+
+
+```{r}
+plot(hc)
+abline(h=10, col="red")
+```
+
+
+to get my results (my cluster membership vector) i need to "cut" my tree using the function `cutree()` 
+
+```{r}
+grps <- cutree(hc, h=10)
+grps
+```
+
+```{r}
+plot(x, col=grps)
+```
+
+
+
+
+
+
+
+
+# Principal Component Analysis (PSA)
+
+the goal of PCA is to reduce the dimensionality of a dataset down to some smaller subset of new variables (called PCs) that are a useful bases for further analysis, like visualization, clustering ect
+
+
+
+
+> Q1. 
+
+
+```{r}
+url <- "https://tinyurl.com/UK-foods"
+x <- read.csv(url, row.names = 1)
+x
+
+
+```
+
+```{r}
+dim(x)
+```
+
+> Q2. 
+the `row.names = 1` way because it was a little more simple to use
+
+
+
+>Q3. 
+
+
+```{r}
+barplot(as.matrix(x), beside=T, col=rainbow(nrow(x)))
+```
+
+
+to make the plot the other bar style you change `beside=T` to `beside=F`
+
+
+```{r}
+barplot(as.matrix(x), beside=F, col=rainbow(nrow(x)))
+```
+
+
+
+
+
+
+
+>Q4(5).
+it means these are the axis for each plot
+
+
+```{r}
+pairs(x, col=rainbow(nrow(x)), pch=16)
+```
+
+
+
+
+so the paris plot is usful for small datasets but it can be lots of work to interpret and gets interactable for longer datasets
+
+
+So PCA to the rescue...
+ the main function to do PCA in base Ris called `prcomp()`.  this function wants the transpof our datain this case. 
+ 
+
+```{r}
+t(x)
+pca <- prcomp(t(x))
+summary(pca)
+
+```
+
+```{r}
+attributes(pca)
+```
+
+```{r}
+pca$x
+```
+
+ 
+ A MAJOR pcA result viz is called a "PCA plot" (aka a score plot, biplot, pc1 vs pc2 plot, ordination plot)
+ 
+
+```{r}
+mycols <- c("orange", "red", "blue", "darkgreen")
+plot(pca$x[,1], pca$x[,2], col=mycols, pch=16, xlab="PC1", ylab="PC2")
+abline(h=0, col="gray")
+abline(v=0, col="gray")
+```
+
+ 
+ 
+ another important output from PCA is called the "loadings" vector or the "rotation" component - this tells us how much the original variabls (the foods in this case) 
+ 
+
+```{r}
+pca$rotation
+```
+
+ 
+ 
+ PCA looks to be a super useful method for gaining some insight into high dimensional data that is difficult to examine in other ways
+ 
