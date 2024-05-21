@@ -1,0 +1,206 @@
+---
+title: "lab14SUB"
+format: pdf
+toc: true
+editor: visual
+author: Ilyas Darif
+date: 5/16/24
+---
+
+Here we run through a complete RNASeq analysis from counts to pathways and biological insite
+
+## Data import
+
+import library
+
+```{r}
+library(DESeq2)
+```
+
+```{r}
+metaFile <- "GSE37704_metadata.csv"
+countFile <- "GSE37704_featurecounts.csv"
+
+# Import metadata and take a peak
+colData = read.csv(metaFile, row.names=1)
+head(colData)
+```
+
+```{r}
+countData = read.csv(countFile, row.names=1)
+head(countData)
+```
+
+```{r}
+countData <- as.matrix(countData[, -1])
+head(countData)
+```
+
+```{r}
+
+```
+
+```{r}
+to.keep.inds <- rowSums(countData) > 0
+countData <- countData[to.keep.inds,]
+```
+
+## Setup for DESeq
+
+```{r}
+library(DESeq2)
+
+dds = DESeqDataSetFromMatrix(countData=countData,
+                             colData=colData,
+                             design=~condition)
+dds = DESeq(dds)
+```
+
+## Running DESeq
+
+```{r}
+
+res <- results(dds)
+
+```
+
+```{r}
+head(res)
+```
+
+```{r}
+res = results(dds, contrast=c("condition", "hoxa1_kd", "control_sirna"))
+
+summary(res)
+```
+
+### save results to date
+
+```{r}
+write.csv(res, file="myresults.csv")
+```
+
+## Add gene annotiation data (gene names ect.)
+
+```{r}
+library(AnnotationDbi)
+library(org.Hs.eg.db)
+```
+
+```{r}
+columns(org.Hs.eg.db)
+```
+
+```{r}
+res$entrez <- mapIds(org.Hs.eg.db, 
+                     keys = row.names(res),
+                     keytype = "ENSEMBL",
+                     column = "ENTREZID")
+head(res)
+```
+
+```{r}
+res$symbol <- mapIds(org.Hs.eg.db, 
+                     keys = row.names(res),
+                     keytype = "ENSEMBL",
+                     column = "SYMBOL")
+
+head(res)
+```
+
+## Reults visualization
+
+```{r}
+library(ggplot2)
+
+data <- as.data.frame(res)
+
+ggplot(data) +
+  aes(log2FoldChange, -log(res$padj))+
+  geom_point()
+
+```
+
+```{r}
+library(EnhancedVolcano)
+
+x <- as.data.frame(res)
+
+EnhancedVolcano(x, 
+    lab = x$symbol,
+    x = 'log2FoldChange',
+    y = 'pvalue')
+```
+
+## Save Our Results
+
+```{r}
+write.csv(res, file="myresults.csv")
+```
+
+## Patway analysis (KEGG, GO, Reactome)
+
+```{r}
+#/ message: false
+library(gage)
+library(gageData)
+library(pathview)
+
+```
+
+```{r}
+foldchanges = res$log2FoldChange
+names(foldchanges) = res$entrez
+head(foldchanges)
+```
+
+## KEGG
+
+```{r}
+data(kegg.sets.hs)
+data(sigmet.idx.hs)
+
+keggres = gage(foldchanges, gsets=kegg.sets.hs)
+
+```
+
+look at the first few down
+
+```{r}
+head(keggres$less, 3)
+```
+
+```{r}
+pathview(gene.data=foldchanges, pathway.id="hsa04110")
+```
+
+![pathwayfigure](hsa04110.pathview.png)
+
+fold change vector with ENTREZ id names
+
+### GO
+
+```{r}
+data(go.sets.hs)
+data(go.subs.hs)
+
+gobpsets = go.sets.hs[go.subs.hs$BP]
+
+gobpres = gage(foldchanges, gsets = gobpsets)
+```
+
+## Reactome
+
+we can use reactome as an R package or we can use the online versionwhich has some new interactvie visualization features. lets try the web version
+
+it wants us to upload a file with genes of interest (ie. thise with significant difference for our experiment)
+
+```{r}
+sig_genes <- res[res$padj <= 0.05 & !is.na(res$padj), "symbol"]
+print(paste("Total number of significant genes:", length(sig_genes)))
+```
+
+```{r}
+write.table(sig_genes, file="significant_genes.txt", row.names=FALSE,
+col.names = FALSE, quote=FALSE)
+```
